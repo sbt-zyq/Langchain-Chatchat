@@ -104,7 +104,7 @@ LOADER_DICT = {
     "CSVLoader": [".csv"],
     # "FilteredCSVLoader": [".csv"], 如果使用自定义分割csv
     "RapidOCRPDFLoader": [".pdf"],
-    "RapidOCRDocLoader": [".docx"],
+    # "RapidOCRDocLoader": [".docx"],
     "RapidOCRPPTLoader": [
         ".ppt",
         ".pptx",

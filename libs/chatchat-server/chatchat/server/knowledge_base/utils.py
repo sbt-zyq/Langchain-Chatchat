@@ -11,6 +11,7 @@ import langchain_community.document_loaders
 from langchain.docstore.document import Document
 from langchain.text_splitter import MarkdownHeaderTextSplitter, TextSplitter
 from langchain_community.document_loaders import JSONLoader, TextLoader
+from chatchat.server.file_rag.text_splitter import ChineseRecursiveTextSplitter
 
 from chatchat.settings import Settings
 from chatchat.server.file_rag.text_splitter import (
@@ -368,6 +369,14 @@ class KnowledgeFile:
             if self.text_splitter_name == "MarkdownHeaderTextSplitter":
                 docs = text_splitter.split_text(docs[0].page_content)
             else:
+                # 针对excel的小优化
+                if self.ext in [".xlsx", ".xls", ".xlsd"]:
+                    text_splitter = ChineseRecursiveTextSplitter(
+                        chunk_size=chunk_size,
+                        chunk_overlap=chunk_overlap,
+                        separators=["\n\n\n"]
+                    )
+
                 docs = text_splitter.split_documents(docs)
 
         if not docs:

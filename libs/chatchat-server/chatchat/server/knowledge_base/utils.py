@@ -11,7 +11,9 @@ import langchain_community.document_loaders
 from langchain.docstore.document import Document
 from langchain.text_splitter import MarkdownHeaderTextSplitter, TextSplitter
 from langchain_community.document_loaders import JSONLoader, TextLoader
-from chatchat.server.file_rag.text_splitter import ChineseRecursiveTextSplitter
+from typing import Iterable
+import copy
+import openpyxl
 
 from chatchat.settings import Settings
 from chatchat.server.file_rag.text_splitter import (
@@ -369,15 +371,11 @@ class KnowledgeFile:
             if self.text_splitter_name == "MarkdownHeaderTextSplitter":
                 docs = text_splitter.split_text(docs[0].page_content)
             else:
-                # 针对excel的小优化
+                # 针对excel的小优化，把excel转化为md
                 if self.ext in [".xlsx", ".xls", ".xlsd"]:
-                    text_splitter = ChineseRecursiveTextSplitter(
-                        chunk_size=chunk_size,
-                        chunk_overlap=chunk_overlap,
-                        separators=["\n\n\n"]
-                    )
-
-                docs = text_splitter.split_documents(docs)
+                    docs = excel2md(docs, self.filepath, chunk_size)
+                else:
+                    docs = text_splitter.split_documents(docs)
 
         if not docs:
             return []
@@ -416,6 +414,65 @@ class KnowledgeFile:
 
     def get_size(self):
         return os.path.getsize(self.filepath)
+
+
+def excel2md(documents: Iterable[Document], filepath: str, chunk_size: int) -> Iterable[Document]:
+    # 拆分所有的合并单元格，并赋予合并之前的值。
+    # 由于openpyxl并没有提供拆分并填充的方法，所以使用该方法进行完成
+    def unmerge_and_fill_cells(worksheet):
+        all_merged_cell_ranges = list(
+            worksheet.merged_cells.ranges
+        )
+
+        for merged_cell_range in all_merged_cell_ranges:
+            merged_cell = merged_cell_range.start_cell
+            worksheet.unmerge_cells(range_string=merged_cell_range.coord)
+
+            for row_index, col_index in merged_cell_range.cells:
+                cell = worksheet.cell(row=row_index, column=col_index)
+                cell.value = merged_cell.value
+
+    md_documents = []
+    wb = openpyxl.load_workbook(filepath)
+    for sheet_name in wb.sheetnames:
+        ws = wb[sheet_name]
+        unmerge_and_fill_cells(ws)
+
+        markdown = f"# {sheet_name}\n\n"
+        # 获取最大列和行数
+        max_row = ws.max_row
+        max_col = ws.max_column
+
+        # 添加表头
+        headers = []
+        for col in range(1, max_col + 1):
+            header = str(ws.cell(row=1, column=col).value).replace("\n", "")
+            headers.append(header)
+        markdown += "| " + " | ".join(headers) + " |\n"
+        markdown += "| " + " | ".join(["---"] * max_col) + " |\n"
+
+        # 添加表格内容
+        content_markdown = "" + markdown
+        if len(content_markdown) > chunk_size:
+            chunk_size = 2 * len(content_markdown)
+        for row in range(2, max_row + 1):
+            row_values = []
+            for col in range(1, max_col + 1):
+                value = str(ws.cell(row=row, column=col).value).replace("\n", "//")  # 内容可能包含换行，但是不能直接使用\n
+                row_values.append(str(value) if value is not None else "")
+            new_row = "| " + " | ".join(row_values) + " |\n"
+            if len(content_markdown) < chunk_size:
+                content_markdown += new_row
+            else:
+                doc = copy.deepcopy(documents[0])
+                doc.page_content = content_markdown
+                md_documents.append(doc)
+                content_markdown = "" + markdown
+        if content_markdown != markdown:
+            doc = copy.deepcopy(documents[0])
+            doc.page_content = content_markdown
+            md_documents.append(doc)
+    return md_documents
 
 
 def files2docs_in_thread_file2docs(

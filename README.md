@@ -303,9 +303,9 @@ chatchat start -a
 ### Docker 部署
 
 ```shell
-docker pull chatimage/chatchat:0.3.1.1-2024-0714
+docker pull chatimage/chatchat:0.3.1.3-0f4eb00-20240729
 
-docker pull ccr.ccs.tencentyun.com/chatchat/chatchat:0.3.1.1-2024-0714 # 国内镜像
+docker pull ccr.ccs.tencentyun.com/langchain-chatchat/chatchat:0.3.1.3-0f4eb00-20240729 # 国内镜像
 ```
 
 > [!important]
@@ -345,7 +345,7 @@ docker pull ccr.ccs.tencentyun.com/chatchat/chatchat:0.3.1.1-2024-0714 # 国内�
 
 ### 项目交流群
 
-<img src="docs/img/qr_code_113.jpg" alt="二维码" width="300" />
+<img src="docs/img/qr_code_114.jpg" alt="二维码" width="300" />
 
 🎉 Langchain-Chatchat 项目微信交流群，如果你也对本项目感兴趣，欢迎加入群聊参与讨论交流。
 
